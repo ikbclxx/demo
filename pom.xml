@@ -1,16 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Maven 项目对象模型（POM —— Project Object Model）配置文件。
+  Maven 是 Java 项目的构建和依赖管理工具，该文件定义了项目的：
+    - 基本信息（groupId, artifactId, version，合称 GAV 坐标）
+    - 父项目（继承 Spring Boot 的预定义依赖版本和插件配置）
+    - 依赖项（项目需要使用的第三方库）
+    - 构建配置（编译器版本、插件等）
+
+  xmlns / xsi:schemaLocation 是 XML Schema 声明，
+  用于 IDE 的自动补全和校验。
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+
+	<!-- ======================== 父项目 ======================== -->
+	<!--
+	  继承 spring-boot-starter-parent：
+	    - 锁定大量常用第三方库的版本号（版本仲裁），避免版本冲突
+	    - 预配置 Maven 插件（如 spring-boot-maven-plugin、maven-compiler-plugin）
+	    - 提供统一的资源过滤和打包配置
+	    - 设置 Java 编译版本等默认属性
+	-->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.5.14</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/> <!-- 从 Maven 仓库查找父 POM，不从本地相对路径查找 -->
 	</parent>
-	<groupId>demo-book</groupId>
-	<artifactId>demo</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+
+	<!-- ======================== 项目坐标 ======================== -->
+	<!-- GAV 坐标（GroupId + ArtifactId + Version）唯一定位一个 Maven 构件 -->
+	<groupId>demo-book</groupId>       <!-- 组织/项目组标识，通常是域名反写 -->
+	<artifactId>demo</artifactId>      <!-- 项目名称/模块名 -->
+	<version>0.0.1-SNAPSHOT</version>  <!-- SNAPSHOT 表示开发中的快照版本，不稳定 -->
+
+	<!-- 以下空元素为占位符，实际发布时可填写项目信息 -->
 	<name/>
 	<description/>
 	<url/>
@@ -26,27 +51,67 @@
 		<tag/>
 		<url/>
 	</scm>
+
+	<!-- ======================== 环境属性 ======================== -->
 	<properties>
+		<!-- 源码和目标字节码兼容 Java 17 -->
 		<maven.compiler.source>17</maven.compiler.source>
 		<maven.compiler.target>17</maven.compiler.target>
-		<!-- 使用 release 参数是更现代的做法，效果等价 -->
+		<!-- maven.compiler.release 是更现代的做法（Java 9+）：
+		     同时设置 source、target 并强制使用对应版本的 JDK API，
+		     避免编译时使用了高版本 API 但 target 设置成低版本导致的兼容性问题 -->
 		<maven.compiler.release>17</maven.compiler.release>
 	</properties>
+
+	<!-- ======================== 项目依赖 ======================== -->
 	<dependencies>
+		<!--
+		  spring-boot-starter-data-jpa: JPA 持久层 Starter
+		  包含:
+		    - Hibernate（JPA 规范的实现，ORM 框架）
+		    - Spring Data JPA（在 Hibernate 之上提供 Repository 抽象）
+		    - spring-boot-starter-aop（事务管理等切面支持）
+		    - spring-boot-starter-jdbc（HikariCP 连接池）
+		-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
+
+		<!--
+		  spring-boot-starter-web: Web 开发 Starter
+		  包含:
+		    - spring-boot-starter-tomcat（内嵌 Tomcat 服务器，默认端口 8080）
+		    - spring-webmvc（Spring MVC 框架，DispatcherServlet、@RestController 等）
+		    - jackson-databind（Java 对象与 JSON 之间的序列化/反序列化）
+		-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+		<!--
+		  mysql-connector-j: MySQL JDBC 驱动
+		  scope=runtime 表示编译时不需要（JPA 在编译期只依赖接口），运行时才需要驱动来连接数据库。
+		  注意："mysql-connector-j" 是较新的 artifactId（"j" 代表 Java），
+		  旧项目可能用的是 "mysql-connector-java"。
+		-->
 		<dependency>
 			<groupId>com.mysql</groupId>
 			<artifactId>mysql-connector-j</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+
+		<!--
+		  spring-boot-starter-test: 测试 Starter
+		  scope=test 表示只在测试类路径中可用，不会被打包到最终 jar 中。
+		  包含:
+		    - JUnit 5（Java 单元测试框架）
+		    - Mockito（Mock 框架）
+		    - AssertJ（流式断言库）
+		    - spring-boot-test（提供 @SpringBootTest 等测试注解）
+		    - spring-test（Spring 测试上下文支持）
+		-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -54,8 +119,15 @@
 		</dependency>
 	</dependencies>
 
+	<!-- ======================== 构建配置 ======================== -->
 	<build>
 		<plugins>
+			<!--
+			  spring-boot-maven-plugin:
+			    - 将项目打包为可执行的 Fat JAR（包含所有依赖的 JAR）
+			    - 提供 spring-boot:run 目标，用于直接运行应用
+			    - 提供 build-info 目标，生成构建信息文件
+			-->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
