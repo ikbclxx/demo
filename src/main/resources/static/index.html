@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<nav class="navbar bg-primary mb-4">
+    <div class="container">
+        <span class="navbar-brand text-white fw-bold">学生管理系统</span>
+    </div>
+</nav>
+
+<div class="container">
+    <!-- 操作栏 -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">学生列表</h4>
+        <div>
+            <button class="btn btn-outline-success me-2" onclick="openImportModal()">
+                <i class="bi bi-file-earmark-spreadsheet"></i> 导入Excel
+            </button>
+            <button class="btn btn-primary" onclick="openAddModal()">
+                <i class="bi bi-plus-lg"></i> 新增学生
+            </button>
+        </div>
+    </div>
+
+    <!-- 表格 -->
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>序号</th>
+                    <th>姓名</th>
+                    <th>邮箱</th>
+                    <th>年龄</th>
+                    <th style="width: 180px;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="studentTableBody">
+                <tr><td colspan="5" class="text-center text-muted">正在加载...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 新增/编辑弹窗 -->
+<div class="modal fade" id="studentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">新增学生</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="mb-3">
+                    <label class="form-label">姓名</label>
+                    <input type="text" class="form-control" id="inputName" placeholder="请输入姓名">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">邮箱</label>
+                    <input type="email" class="form-control" id="inputEmail" placeholder="请输入邮箱">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">年龄</label>
+                    <input type="text" class="form-control" id="inputAge" placeholder="请输入年龄">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveStudent()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 导入弹窗 -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">导入学生数据</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">选择Excel文件</label>
+                    <input type="file" class="form-control" id="importFileInput"
+                           accept=".xlsx,.xls,.csv" onchange="handleFileSelect(event)">
+                    <div class="form-text">支持 .xlsx / .xls / .csv 格式，表头需包含：姓名、邮箱、年龄</div>
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="downloadTemplate()">
+                            <i class="bi bi-download"></i> 下载标准模板
+                        </button>
+                    </div>
+                </div>
+
+                <div id="importEmptyHint" class="text-center text-muted py-4">
+                    <i class="bi bi-upload" style="font-size: 2rem;"></i>
+                    <p class="mt-2">请选择文件后预览数据</p>
+                </div>
+
+                <div id="importPreviewArea" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span id="importPreviewCount" class="text-muted"></span>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="importSelectAll"
+                                   checked onchange="importToggleAll(this.checked)">
+                            <label class="form-check-label" for="importSelectAll">全选</label>
+                        </div>
+                    </div>
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light" style="position: sticky; top: 0;">
+                                <tr>
+                                    <th style="width:40px;">选择</th>
+                                    <th style="width:50px;">序号</th>
+                                    <th>姓名</th>
+                                    <th>邮箱</th>
+                                    <th>年龄</th>
+                                </tr>
+                            </thead>
+                            <tbody id="importPreviewTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="importConfirmBtn"
+                        onclick="confirmImport()" disabled>确认导入</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const API = '/student';
+
+let modal = null;
+let importModal = null;
+let editId = null;
+
+// 导入相关状态
+let importData = [];
+let importSelected = new Set();
+
+document.addEventListener('DOMContentLoaded', () => {
+    modal = new bootstrap.Modal('#studentModal');
+    importModal = new bootstrap.Modal('#importModal');
+    loadStudents();
+});
+
+// 加载全部学生
+async function loadStudents() {
+    try {
+        const res = await fetch(API + '/list');
+        const json = await res.json();
+        const tbody = document.getElementById('studentTableBody');
+
+        if (!json.success || !json.data || json.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">暂无数据</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = json.data.map((s, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td>${esc(s.name)}</td>
+                <td>${esc(s.email)}</td>
+                <td>${esc(s.age)}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick='openEditModal(${JSON.stringify(s)})'>
+                        <i class="bi bi-pencil"></i> 编辑
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent(${s.id}, '${esc(s.name)}')">
+                        <i class="bi bi-trash"></i> 删除
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        document.getElementById('studentTableBody').innerHTML =
+            '<tr><td colspan="5" class="text-center text-danger">加载失败</td></tr>';
+    }
+}
+
+// 打开新增弹窗
+function openAddModal() {
+    editId = null;
+    document.getElementById('modalTitle').textContent = '新增学生';
+    document.getElementById('inputName').value = '';
+    document.getElementById('inputEmail').value = '';
+    document.getElementById('inputAge').value = '';
+    modal.show();
+}
+
+// 打开编辑弹窗
+function openEditModal(student) {
+    editId = student.id;
+    document.getElementById('modalTitle').textContent = '编辑学生';
+    document.getElementById('inputName').value = student.name;
+    document.getElementById('inputEmail').value = student.email;
+    document.getElementById('inputAge').value = student.age;
+    modal.show();
+}
+
+// 保存（新增或更新）
+async function saveStudent() {
+    const name = document.getElementById('inputName').value.trim();
+    const email = document.getElementById('inputEmail').value.trim();
+    const age = document.getElementById('inputAge').value.trim();
+
+    if (!name || !email || !age) {
+        alert('请填写所有字段');
+        return;
+    }
+
+    try {
+        let res;
+        if (editId) {
+            // 更新：PUT /student/{id}?name=&email=&age=
+            const params = new URLSearchParams({ name, email, age });
+            res = await fetch(API + '/' + editId + '?' + params, { method: 'PUT' });
+        } else {
+            // 新增：POST /student，JSON body
+            res = await fetch(API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, age })
+            });
+        }
+        const json = await res.json();
+        if (json.success) {
+            modal.hide();
+            loadStudents();
+        } else {
+            alert(json.message || '操作失败');
+        }
+    } catch (e) {
+        alert('请求失败');
+    }
+}
+
+// 删除学生
+async function deleteStudent(id, name) {
+    if (!confirm('确定要删除「' + name + '」吗？')) return;
+    try {
+        const res = await fetch(API + '/' + id, { method: 'DELETE' });
+        if (res.ok) {
+            loadStudents();
+        } else {
+            alert('删除失败');
+        }
+    } catch (e) {
+        alert('请求失败');
+    }
+}
+
+// 简单防 XSS
+function esc(s) {
+    if (!s) return '';
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+}
+
+// ======================== 导入相关 ========================
+
+// 打开导入弹窗
+function openImportModal() {
+    importData = [];
+    importSelected = new Set();
+    document.getElementById('importFileInput').value = '';
+    document.getElementById('importPreviewArea').style.display = 'none';
+    document.getElementById('importEmptyHint').style.display = 'block';
+    document.getElementById('importConfirmBtn').disabled = true;
+    importModal.show();
+}
+
+// 处理文件选择，解析 Excel/CSV
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const workbook = XLSX.read(e.target.result, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+            if (rows.length < 2) {
+                alert('文件中没有数据');
+                return;
+            }
+
+            const colMap = mapColumns(rows[0]);
+            if (colMap.name == null || colMap.email == null || colMap.age == null) {
+                alert('无法识别列标题，请确保包含：姓名、邮箱、年龄');
+                return;
+            }
+
+            importData = rows.slice(1)
+                .map(row => ({
+                    name: String(row[colMap.name] || '').trim(),
+                    email: String(row[colMap.email] || '').trim(),
+                    age: String(row[colMap.age] || '').trim(),
+                }))
+                .filter(s => s.name || s.email || s.age);
+
+            if (importData.length === 0) {
+                alert('没有有效数据');
+                return;
+            }
+
+            importSelected = new Set(importData.map((_, i) => i));
+            renderImportPreview();
+        } catch (err) {
+            alert('解析文件失败: ' + err.message);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// 列标题映射：支持中英文常见表头
+function mapColumns(headers) {
+    const map = {};
+    headers.forEach((h, i) => {
+        const text = String(h || '').trim().toLowerCase();
+        if (/姓名|名字|name/i.test(text)) map.name = i;
+        if (/邮箱|邮件|email|电子/i.test(text)) map.email = i;
+        if (/年龄|age/i.test(text)) map.age = i;
+    });
+    return map;
+}
+
+// 渲染预览表格
+function renderImportPreview() {
+    document.getElementById('importEmptyHint').style.display = 'none';
+    document.getElementById('importPreviewArea').style.display = 'block';
+
+    document.getElementById('importPreviewTable').innerHTML = importData.map((s, i) => `
+        <tr>
+            <td><input type="checkbox" ${importSelected.has(i) ? 'checked' : ''}
+                       onchange="importToggleRow(${i}, this.checked)"></td>
+            <td>${i + 1}</td>
+            <td>${esc(s.name)}</td>
+            <td>${esc(s.email)}</td>
+            <td>${esc(s.age)}</td>
+        </tr>
+    `).join('');
+
+    importUpdateCount();
+}
+
+function importToggleRow(index, checked) {
+    if (checked) importSelected.add(index);
+    else importSelected.delete(index);
+    importUpdateCount();
+}
+
+function importToggleAll(checked) {
+    if (checked) importData.forEach((_, i) => importSelected.add(i));
+    else importSelected.clear();
+    renderImportPreview();
+}
+
+function importUpdateCount() {
+    document.getElementById('importPreviewCount').textContent =
+        `共 ${importData.length} 条数据，已选择 ${importSelected.size} 条`;
+    document.getElementById('importConfirmBtn').disabled = importSelected.size === 0;
+    document.getElementById('importSelectAll').checked = importSelected.size === importData.length;
+}
+
+// 确认导入
+async function confirmImport() {
+    const selectedData = importData.filter((_, i) => importSelected.has(i));
+    if (selectedData.length === 0) return;
+
+    const btn = document.getElementById('importConfirmBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>导入中...';
+
+    try {
+        const res = await fetch(API + '/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(selectedData)
+        });
+        const json = await res.json();
+
+        if (json.success) {
+            const r = json.data;
+            let msg = `导入完成！成功: ${r.successCount} 条`;
+            if (r.failCount > 0) {
+                msg += `，失败: ${r.failCount} 条`;
+                if (r.failures && r.failures.length > 0) {
+                    msg += '\n\n失败详情:\n' + r.failures.map(f =>
+                        `第 ${f.row} 行: ${f.reason}`
+                    ).join('\n');
+                }
+            }
+            alert(msg);
+            importModal.hide();
+            loadStudents();
+        } else {
+            alert(json.message || '导入失败');
+        }
+    } catch (e) {
+        alert('请求失败');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '确认导入';
+    }
+}
+
+// 下载标准导入模板
+function downloadTemplate() {
+    const workbook = XLSX.utils.book_new();
+
+    // 表头 + 一行示例数据
+    const data = [
+        ['姓名', '邮箱', '年龄'],
+        ['张三', 'zhangsan@example.com', '20'],
+    ];
+
+    const sheet = XLSX.utils.aoa_to_sheet(data);
+
+    // 设置列宽
+    sheet['!cols'] = [
+        { wch: 12 },
+        { wch: 28 },
+        { wch: 8 },
+    ];
+
+    XLSX.utils.book_append_sheet(workbook, sheet, '学生信息');
+    XLSX.writeFile(workbook, '学生导入模板.xlsx');
+}
+</script>
+
+</body>
+</html>

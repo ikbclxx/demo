@@ -2,11 +2,13 @@ package demo_book.demo.controller;
 
 
 import demo_book.demo.Response;
-import demo_book.demo.dao.Student;
+import demo_book.demo.dto.ImportResult;
 import demo_book.demo.dto.StudentDTO;
 import demo_book.demo.service.StudentServices;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 /**
@@ -41,19 +43,21 @@ public class StudentController {
 	/**
 	 * 根据 ID 查询学生信息。
 	 *
-	 * @GetMapping("/student/{id}")：
-	 *   @GetMapping  — 处理 HTTP GET 请求
-	 *   {id}         — 路径变量（Path Variable），从 URL 路径中提取参数值
-	 *
-	 * @PathVariable 将 URL 中的 {id} 绑定到方法参数 id 上。
-	 * 例如请求 GET /student/1 时，id 的值为 1。
-	 *
 	 * @param id 学生 ID（路径参数）
 	 * @return 成功时返回 Response<StudentDTO>，失败时由全局异常处理器（如有）返回错误响应
+	 * @GetMapping("/student/{id}")：
+	 * @GetMapping — 处理 HTTP GET 请求
+	 * {id}         — 路径变量（Path Variable），从 URL 路径中提取参数值
+	 * @PathVariable 将 URL 中的 {id} 绑定到方法参数 id 上。
+	 * 例如请求 GET /student/1 时，id 的值为 1。
 	 */
 	@GetMapping("/student/{id}")
 	public Response<StudentDTO> getStudentById(@PathVariable Long id){
 		return Response.newSuccess(studentServices.getStudentById(id));
+	}
+	@GetMapping("/student/list")
+	public Response<List<StudentDTO>> getAllStudents(){
+		return Response.newSuccess(studentServices.getAllstudents());
 	}
 
 	/**
@@ -79,6 +83,16 @@ public class StudentController {
 		return Response.newSuccess(studentServices.addNewStudent(studentDTO));
 	}
 
+	@PostMapping("/student/import")
+	public Response<ImportResult> importStudent(@RequestBody List<StudentDTO> studentDTOList){
+		if (studentDTOList == null || studentDTOList.isEmpty()){
+			Response<ImportResult> response = new Response<>();
+			response.setSuccess(false);
+			response.setMessage("导入数据不能为空");
+			return response;
+		}
+		return Response.newSuccess(studentServices.batchAddStudents(studentDTOList));
+	}
 
 	/**
 	 * 根据 ID 删除学生。

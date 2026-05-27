@@ -1,6 +1,9 @@
 package demo_book.demo.service;
 
+import demo_book.demo.dto.ImportResult;
 import demo_book.demo.dto.StudentDTO;
+
+import java.util.List;
 
 /**
  * 学生业务逻辑服务接口。
@@ -53,4 +56,8 @@ public interface StudentServices {
 	 */
 	StudentDTO updateStudentById(Long id, String name, String email, String age);
 
+
+	ImportResult batchAddStudents(List<StudentDTO> studentDtoList);
+
+	List<StudentDTO> getAllstudents();
 }

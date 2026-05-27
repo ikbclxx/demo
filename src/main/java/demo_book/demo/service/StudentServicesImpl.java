@@ -3,12 +3,14 @@ package demo_book.demo.service;
 import demo_book.demo.converter.StudentConvert;
 import demo_book.demo.dao.Student;
 import demo_book.demo.dao.StudentRepository;
+import demo_book.demo.dto.ImportResult;
 import demo_book.demo.dto.StudentDTO;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+
 
 import java.util.List;
 
@@ -148,5 +150,42 @@ public class  StudentServicesImpl implements StudentServices {
 		Student student = studentRepository.save(studentInDB);
 		// 转换为 DTO 返回给前端
 		return StudentConvert.converStudent(student);
+	}
+
+
+	@Override
+	public ImportResult batchAddStudents(List<StudentDTO> studentDTOList){
+		ImportResult result = new ImportResult();
+		result.setTotal(studentDTOList.size());
+
+		for (int i = 0; i < studentDTOList.size(); i++) {
+			StudentDTO dto = studentDTOList.get(i);
+			try {
+				addNewStudent(dto);
+				result.setSuccessCount(result.getSuccessCount() + 1);
+			}
+			catch (IllegalStateException e){
+				result.setFailCount(result.getFailCount() + 1);
+				result.addFailure(i + 1, e.getMessage());
+			}
+		}
+		return result;
+	}
+
+
+
+
+
+	/**
+	 * 查询所有学生
+	 * findAll 返回 List<Student>，转换为 List<StudentDTO> 后返回。
+	 *
+	 * @return 所有学生的 DTO 列表
+	 */
+
+	@Override
+	public List<StudentDTO> getAllstudents() {
+		List<Student> studentList = studentRepository.findAll();
+		return studentList.stream().map(StudentConvert::converStudent).toList();
 	}
 }
